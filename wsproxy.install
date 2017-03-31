@@ -1,0 +1,7 @@
+lib: [
+  "_build/install/default/lib/wsproxy/opam" {"opam"}
+  "_build/install/default/lib/wsproxy/META" {"META"}
+]
+bin: [
+  "_build/install/default/bin/wsproxy" {"wsproxy"}
+]
