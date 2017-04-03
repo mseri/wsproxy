@@ -1,10 +1,8 @@
-(executables
- ((names       (wsproxy))
+(jbuild_version 1)
+
+(executable (
+  (name        wsproxy)
+  (public_name wsproxy)
   (libraries   (re.str lwt lwt.unix))
-  (preprocess  no_preprocessing)
 ))
 
-(install
- ((section bin)
-  (files ((wsproxy.exe as wsproxy))
-)))
