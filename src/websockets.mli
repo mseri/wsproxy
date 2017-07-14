@@ -45,5 +45,3 @@ module Wsprotocol :
     val wsunframe_old : 'a t -> 'a t t
   end
 
-(** Run some tests from the websockets document *)
-val runtest : unit -> unit

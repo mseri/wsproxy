@@ -1,8 +1,12 @@
 (jbuild_version 1)
 
-(executable
- ((name       wsproxy)
-  (public_name wsproxy)
-  (libraries   (re.str lwt lwt.unix))
+(executables
+ ((names (wsproxy wsproxy_tests))
+  (public_names (wsproxy wsproxy_tests))
+  (libraries (re.str lwt lwt.unix oUnit qcheck))
 ))
 
+(alias
+ ((name runtest)
+  (deps (wsproxy_tests.exe))
+  (action (run ${<}))))

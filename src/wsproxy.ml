@@ -94,17 +94,12 @@ let handler sock msg =
     Lwt_unix.close sock
 
 let _ =
-  if Array.length Sys.argv > 1 
-  then Lwt.return (Websockets.runtest ())
-  else 
-    begin
-      Lwt_daemon.daemonize ~stdout:`Dev_null ~stdin:`Close ~stderr:`Dev_null ();
-      let filename = "/var/run/wsproxy.pid" in
-      (try Unix.unlink filename with _ -> ());
-      Lwt_main.run begin
-        let pid = Unix.getpid () in
-        Lwt_io.with_file filename ~mode:Lwt_io.output (fun chan ->
-            Lwt_io.fprintf chan "%d" pid) >>= fun _ -> 
-        start "wsproxy" handler
-      end
-    end
+  Lwt_daemon.daemonize ~stdout:`Dev_null ~stdin:`Close ~stderr:`Dev_null ();
+  let filename = "/var/run/wsproxy.pid" in
+  (try Unix.unlink filename with _ -> ());
+  Lwt_main.run begin
+    let pid = Unix.getpid () in
+    Lwt_io.with_file filename ~mode:Lwt_io.output (fun chan ->
+      Lwt_io.fprintf chan "%d" pid) >>= fun _ -> 
+    start "wsproxy" handler
+  end

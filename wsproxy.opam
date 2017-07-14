@@ -12,5 +12,7 @@ depends: [
   "jbuilder" {build}
   "lwt" { < "3.0.0" }
   "re"
+  "ounit"
+  "qcheck"
 ]
 tags: [ "org:xapi-project" ]
