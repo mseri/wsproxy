@@ -11,12 +11,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *)
-
+open Wslib
 
 let get_dir_path () = Printf.sprintf "/var/xapi/" 
 
-
-module LwtWsIteratee = Websockets.Wsprotocol(Lwt)
+module LwtWsIteratee = Wslib.Websockets.Wsprotocol(Lwt)
 open Lwt.Infix
 
 let start path handler =

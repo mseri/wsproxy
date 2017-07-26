@@ -13,7 +13,7 @@
  *)
 
 open OUnit
-open Helpers
+open Wslib
 
 let gen_nums n generator =
   QCheck.Gen.generate n generator

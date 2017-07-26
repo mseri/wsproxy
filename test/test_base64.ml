@@ -13,7 +13,7 @@
  *)
 
 open OUnit
-open Base64
+open Wslib
 
 let gen_strings n =
   let generator = QCheck.Gen.string in

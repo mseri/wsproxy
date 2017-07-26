@@ -13,6 +13,7 @@
  *)
 
 open OUnit
+open Wslib
 
 module TestWsIteratee = Websockets.Wsprotocol(Test.StringMonad)
 module I = Iteratees.Iteratee(Test.StringMonad)

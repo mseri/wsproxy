@@ -1,0 +1,17 @@
+B ../_build/default/src
+B ../_build/default/test
+FLG -w -40
+PKG bigarray
+PKG bytes
+PKG lwt
+PKG lwt.log
+PKG lwt.unix
+PKG oUnit
+PKG oUnit.advanced
+PKG qcheck
+PKG re
+PKG re.emacs
+PKG re.str
+PKG result
+PKG unix
+S ../src
