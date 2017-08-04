@@ -126,7 +126,7 @@ let _ =
   then Lwt.return (Websockets.runtest ())
   else
     begin
-      Lwt_daemon.daemonize ~stdout:`Dev_null ~stdin:`Close ~stderr:`Dev_null ();
+      Lwt_daemon.daemonize ~stdout:`Log_default ~stdin:`Close ~stderr:`Log_default ();
       let filename = "/var/run/wsproxy.pid" in
       (try Unix.unlink filename with _ -> ());
       Lwt_main.run begin
