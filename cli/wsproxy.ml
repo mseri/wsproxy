@@ -89,10 +89,10 @@ let proxy (fd : Lwt_unix.file_descr) protocol localport =
       let session_id = Uuidm.v `V4 |> Uuidm.to_string in
       Lwt_log.debug_f "Starting proxy session %s" session_id >>= fun () ->
       let thread1 =
-        lwt_fd_enumerator localfd (frame (writer (really_write fd) "thread1")) >>= fun _ ->
+        lwt_fd_enumerator localfd (frame (writer (really_write fd) (Bytes.of_string "thread1"))) >>= fun _ ->
         Lwt.return_unit in
       let thread2 =
-        lwt_fd_enumerator fd (unframe (writer (really_write localfd) "thread2")) >>= fun _ ->
+        lwt_fd_enumerator fd (unframe (writer (really_write localfd) (Bytes.of_string "thread2"))) >>= fun _ ->
         Lwt.return_unit in
       (* closing the connection in one of the threads above in general leaves the other pending forever,
        * by using choose here, we make sure that as soon as one of the threads completes, both are closed *)

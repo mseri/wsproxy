@@ -18,7 +18,7 @@ type 'a t = 'a Iteratees.Iteratee(Lwt).t =
 
 (** Really write a string to a file descriptor - repeats until the whole
     string is done *)
-val really_write : Lwt_unix.file_descr -> string -> unit Lwt.t
+val really_write : Lwt_unix.file_descr -> bytes -> unit Lwt.t
 
 (** Read from an Lwt fd and send the chunks to an iteratee *)
 val lwt_fd_enumerator : Lwt_unix.file_descr -> 'a t -> 'a t Lwt.t

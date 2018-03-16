@@ -18,12 +18,12 @@ type err = string
 
 type stream =
   | Eof of err option
-  | Chunk of string
+  | Chunk of bytes
 
 let string_of_stream = function
   | Eof (Some x) -> Printf.sprintf "Eof (Some '%s')" x
   | Eof None -> "Eof None"
-  | Chunk s -> Printf.sprintf "Chunk '%s'" s
+  | Chunk b -> Printf.sprintf "Chunk '%s'" (Bytes.to_string b)
 
 
 module type Monad = sig
@@ -71,10 +71,10 @@ module Iteratee (IO : Monad) = struct
   let rec peek =
     let step st =
       match st with
-      | Chunk s ->
-        if String.length s = 0
+      | Chunk b ->
+        if Bytes.length b = 0
         then IO.return (peek, st)
-        else IO.return (IE_done (Some s.[0]), st)
+        else IO.return (IE_done (Some (Bytes.get b 0)), st)
       | _ -> IO.return (IE_done None, st)
     in
     IE_cont (None, step)
@@ -82,10 +82,11 @@ module Iteratee (IO : Monad) = struct
   let rec head =
     let rec step st =
       match st with
-      | Chunk s ->
-        if String.length s = 0
+      | Chunk b ->
+        let len = Bytes.length b in
+        if len = 0
         then IO.return (head, st)
-        else IO.return (IE_done (Some s.[0]), Chunk (String.sub s 1 (String.length s - 1)))
+        else IO.return (IE_done (Some (Bytes.get b 0)), Chunk (Bytes.sub b 1 (len - 1)))
       | _ -> IO.return (IE_cont ((Some "Eof"),step), st)
     in
     IE_cont (None, step)
@@ -95,7 +96,7 @@ module Iteratee (IO : Monad) = struct
       match st with
       | Chunk s ->
         IO.bind (really_write s)
-          (fun () -> IO.return (IE_cont (None, step), Chunk ""))
+          (fun () -> IO.return (IE_cont (None, step), Chunk Bytes.empty))
       | Eof _ ->
         IO.return (IE_done (), st)
     in
@@ -106,70 +107,72 @@ module Iteratee (IO : Monad) = struct
   let break pred =
     let rec step before st =
       match st with
-      | Chunk "" -> ie_contM (step before) st
-      | Chunk s ->
+      | Chunk b when (Bytes.unsafe_to_string b) = "" -> ie_contM (step before) st
+      | Chunk b ->
         begin
-          match break pred s with
-          | (_,"") -> ie_contM (step (before^s)) (Chunk "")
-          | (str,tail) -> ie_doneM (before^str) (Chunk tail)
+          match break pred b with
+          | None -> ie_contM (step (Bytes.concat Bytes.empty [before; b])) (Chunk Bytes.empty)
+          | Some(str,tail) -> ie_doneM (Bytes.concat Bytes.empty [before; str]) (Chunk tail)
         end
       | _ -> IO.return (IE_done before, st)
-    in IE_cont (None, step "")
+    in IE_cont (None, step Bytes.empty)
 
-  let heads str =
-    let rec step cnt str stream =
-      match (stream,str) with
-      | _, ""
-      | Eof _, _ -> IO.return (IE_done cnt, stream)
-      | Chunk s, str ->
-        if String.length s = 0
-        then IO.return (IE_cont (None, step 0 str), stream)
+  let heads buf =
+    let rec step cnt buf stream =
+      match (stream,buf) with
+      | (_, e) when (Bytes.unsafe_to_string e = "") ->
+        IO.return (IE_done cnt, stream)
+      | Eof _, _ ->
+        IO.return (IE_done cnt, stream)
+      | Chunk b, buf ->
+        if Bytes.length b = 0
+        then IO.return (IE_cont (None, step 0 buf), stream)
         else
-        if s.[0]=str.[0]
-        then let (_, tl) = split str 1 in step (cnt+1) tl (Chunk (snd (split s 1)))
+        if (Bytes.get b 0) = (Bytes.get buf 0)
+        then let (_, tl) = split buf 1 in step (cnt+1) tl (Chunk (snd (split b 1)))
         else IO.return (IE_done cnt, stream)
     in
-    IE_cont (None, step 0 str)
+    IE_cont (None, step 0 buf)
 
   let drop = function
     | 0 -> IE_done ()
     | n -> begin
         let rec step n st = match st with
-          | Chunk s ->
-            let len = String.length s in
+          | Chunk b ->
+            let len = Bytes.length b in
             if len < n
-            then ie_contM (step (n-len)) (Chunk "")
-            else ie_doneM () (Chunk (String.sub s n (len-n)))
+            then ie_contM (step (n-len)) (Chunk Bytes.empty)
+            else ie_doneM () (Chunk (Bytes.sub b n (len-n)))
           | Eof _ -> ie_doneM () st
         in IE_cont (None, step n)
       end
 
   let readn = function
-    | 0 -> IE_done ""
+    | 0 -> IE_done Bytes.empty
     | n -> begin
         let rec step acc n st =
           match st with
-          | Chunk s ->
-            let len = String.length s in
+          | Chunk b ->
+            let len = Bytes.length b in
             if len < n
-            then ie_contM (step (acc^s) (n-len)) (Chunk "")
+            then ie_contM (step (Bytes.concat Bytes.empty [acc; b]) (n-len)) (Chunk Bytes.empty)
             else
-              let (s1,s2) = split s n in
-              ie_doneM (acc^s1) (Chunk s2)
+              let (s1,s2) = split b n in
+              ie_doneM (Bytes.concat Bytes.empty [acc; s1]) (Chunk s2)
           | Eof _ -> ie_errM "EOF" (step acc n) st
-        in IE_cont (None, step "" n)
+        in IE_cont (None, step Bytes.empty n)
       end
 
-  let read_int8 = readn 1 >>= (fun s -> return (unmarshal_int8 s))
-  let read_int16 = readn 2 >>= (fun s -> return (unmarshal_int16 s))
-  let read_int32 = readn 4 >>= (fun s -> return (unmarshal_int32 s))
+  let read_int8 = readn 1 >>= (fun s -> return (unmarshal_int8 @@ Bytes.unsafe_to_string s))
+  let read_int16 = readn 2 >>= (fun s -> return (unmarshal_int16 @@ Bytes.unsafe_to_string s))
+  let read_int32 = readn 4 >>= (fun s -> return (unmarshal_int32 @@ Bytes.unsafe_to_string s))
 
   let drop_while pred =
     let rec step st = match st with
-      | Chunk s ->
-        let news = str_drop_while pred s in
-        if news=""
-        then ie_contM step (Chunk "")
+      | Chunk b ->
+        let news = drop_while pred b in
+        if news=Bytes.empty
+        then ie_contM step (Chunk Bytes.empty)
         else ie_doneM () (Chunk news)
       | Eof _ ->
         ie_doneM () st
@@ -178,16 +181,16 @@ module Iteratee (IO : Monad) = struct
 
   let accumulate =
     let rec step acc st = match st with
-      | Chunk s ->
-        ie_contM (step (acc^s)) (Chunk "")
+      | Chunk b ->
+        ie_contM (step (Bytes.concat Bytes.empty [acc; b])) (Chunk Bytes.empty)
       | Eof _ -> ie_doneM acc st
-    in IE_cont (None, step "")
+    in IE_cont (None, step Bytes.empty)
 
   let apply f =
     let rec step st = match st with
       | Chunk s ->
         f s;
-        ie_contM step (Chunk "")
+        ie_contM step (Chunk Bytes.empty)
       | Eof _ -> ie_doneM () st
     in IE_cont (None, step)
 
@@ -222,9 +225,9 @@ module Iteratee (IO : Monad) = struct
     | IE_cont (None, f) -> IO.bind (f (Chunk str)) (fun x -> IO.return (fst x))
     | x -> IO.return x
 
-  let rec enum_nchunk str n =
-    if str="" then (fun x -> IO.return x) else
-      let (str1,str2) = split str n in
+  let rec enum_nchunk buf n =
+    if buf=Bytes.empty then (fun x -> IO.return x) else
+      let (str1,str2) = split buf n in
       function
       | IE_cont (None, f) ->
         IO.bind (IO.bind (f (Chunk str1))
@@ -240,14 +243,14 @@ module Iteratee (IO : Monad) = struct
   let rec take =
     let step n k s =
       match s with
-      | Chunk str ->
-        let len = String.length str in
+      | Chunk buf ->
+        let len = Bytes.length buf in
         if len < n
         then
           IO.bind (k s) (fun (i, _) ->
-              IO.return (take (n-len) i, Chunk ""))
+              IO.return (take (n-len) i, Chunk Bytes.empty))
         else
-          let (str1,str2) = split str n in
+          let (str1,str2) = split buf n in
           IO.bind (k (Chunk str1)) (fun (i,_) ->
               IO.return (IE_done i, Chunk str2))
       | Eof _ ->
@@ -298,12 +301,12 @@ module Iteratee (IO : Monad) = struct
   let read_lines =
     let (>>=) = bind in
     let iscrlf = function | '\r' | '\n' -> true | _ -> false in
-    let terminators = heads "\r\n" >>= function | 0 -> heads "\n" | n -> return n in
+    let terminators = heads (Bytes.of_string "\r\n") >>= function | 0 -> heads (Bytes.of_string "\n") | n -> return n in
     let rec lines' acc = break iscrlf >>= fun l -> terminators >>= check acc l
     and check acc l n =
       match (l,n) with
       | (_,0)  -> return (Left (List.rev acc))
-      | ("",_) -> return (Right (List.rev acc))
+      | (e,_) when (Bytes.unsafe_to_string e = "") -> return (Right (List.rev acc))
       | (l,_)  -> lines' (l::acc)
     in
     lines' []

@@ -34,15 +34,16 @@ module Wsprotocol (IO : Iteratees.Monad) = struct
     done;
     Buffer.contents result
 
-  let base64encode s = modify B64.encode s
+  let base64encode s = modify (fun x -> Bytes.unsafe_of_string @@ B64.encode @@ Bytes.unsafe_to_string x) s
   let base64decode s =
-    let decode x = B64.decode (sanitize x) in
+    let decode x = Bytes.unsafe_of_string @@ B64.decode @@ sanitize @@ Bytes.unsafe_to_string x in
     modify decode s
 
   let writer = I.writer
 
   let wsframe s = modify (fun s ->
-      let l = String.length s in
+      let s = Bytes.unsafe_to_string s in
+      let l = String.length s in begin
       if l < 126
       then
         Printf.sprintf "%c%c%s" (char_of_int 0x82) (char_of_int l) s
@@ -52,9 +53,11 @@ module Wsprotocol (IO : Iteratees.Monad) = struct
           (Helpers.marshal_int16 l) s
       else
         Printf.sprintf "%c%c%s%s" (char_of_int 0x82) (char_of_int 127)
-          (Helpers.marshal_int32 (Int32.of_int l)) s) s
+          (Helpers.marshal_int32 (Int32.of_int l)) s
+      end
+      |> Bytes.unsafe_of_string) s
 
-  let wsframe_old s = modify (fun s -> Printf.sprintf "\x00%s\xff" s) s
+  let wsframe_old s = modify (fun s -> Bytes.unsafe_of_string @@ Printf.sprintf "\x00%s\xff" @@ Bytes.unsafe_to_string s) s
 
   let rec wsunframe x =
     let read_sz =
@@ -72,7 +75,7 @@ module Wsprotocol (IO : Iteratees.Monad) = struct
     let read_mask has_mask =
       if has_mask
       then readn 4
-      else return "\x00\x00\x00\x00"
+      else return (Bytes.of_string "\x00\x00\x00\x00")
     in
     let rec inner acc s =
       match s with
@@ -83,27 +86,27 @@ module Wsprotocol (IO : Iteratees.Monad) = struct
           read_size sz                 >>= fun size ->
           read_mask has_mask           >>= fun mask ->
           readn size                   >>= fun str ->
-          let real_str = Helpers.unmask mask str in
+          let real_str = Helpers.unmask (Bytes.unsafe_to_string mask) str in
           if op land 0x0f = 0x08
           then (* close frame *)
             return s
           else
           if not (op land 0x80 = 0x80)
           then begin
-            inner (acc ^ real_str) s
+            inner (Bytes.concat Bytes.empty [acc; real_str]) s
           end else begin
-            liftI (IO.bind (k (Iteratees.Chunk (acc ^ real_str))) (fun (i, _) ->
+            liftI (IO.bind (k (Iteratees.Chunk (Bytes.concat Bytes.empty [acc; real_str]))) (fun (i, _) ->
                 IO.return (wsunframe i)))
           end
         end
       | _ -> return s
-    in inner "" x
+    in inner Bytes.empty x
 
   let rec wsunframe_old s =
     match s with
     | IE_cont (None, k) ->
       begin
-        heads "\x00" >>= fun _ ->
+        heads (Bytes.of_string "\x00") >>= fun _ ->
         break ((=) '\xff') >>= fun str ->
         drop 1 >>= fun () ->
         liftI (IO.bind (k (Iteratees.Chunk str)) (fun (i,_) ->

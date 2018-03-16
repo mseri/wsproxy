@@ -20,10 +20,10 @@ type 'a t = 'a Iteratee(Lwt).t =
 
 let (>>=) = Lwt.bind
 
-let really_write fd str =
-  let len = String.length str in
+let really_write fd buf =
+  let len = Bytes.length buf in
   let rec inner written =
-    Lwt_unix.write fd (Bytes.unsafe_of_string str) written (len-written)
+    Lwt_unix.write fd buf written (len-written)
     >>= (fun n ->
         if n < (len-written) then inner (written+n) else Lwt.return ())
   in inner 0
@@ -34,7 +34,7 @@ let lwt_fd_enumerator fd =
   let get_str n =
     if n=0
     then (Eof None)
-    else (Chunk (Bytes.sub_string buf 0 n))
+    else (Chunk (Bytes.sub buf 0 n))
   in
   let rec go = function
     | IE_cont (None,x) ->

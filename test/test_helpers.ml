@@ -19,25 +19,26 @@ let gen_nums n generator =
   QCheck.Gen.generate n generator
 
 let test_split () =
-  let (a, b) = Helpers.split "helper" 2 in
-  assert_equal a "he";
-  assert_equal b "lper"
+  let (a, b) = Helpers.split (Bytes.of_string "helper") 2 in
+  assert_equal a @@ Bytes.of_string "he";
+  assert_equal b @@ Bytes.of_string "lper"
 
 let test_break () =
   let pred = function | 'x' -> true | _ -> false in
-  let (a, b) = Helpers.break pred "helper" in
-  assert_equal a "helper";
-  assert_equal b "";
-  let (a, b) = Helpers.break pred "helxper" in
-  assert_equal a "hel";
-  assert_equal b "xper"
+  let none = Helpers.break pred @@ Bytes.of_string "helper" in
+  assert_equal none None;
+  match Helpers.break pred @@ Bytes.of_string "helxper" with
+  | Some(a,b) ->
+    assert_equal a @@ Bytes.of_string "hel";
+    assert_equal b @@ Bytes.of_string "xper"
+  | None -> failwith "Expected some, found none"
 
 let test_str_drop_while () =
   let pred = function | 'x' -> true | _ -> false in
-  let a = Helpers.str_drop_while pred "helper" in
-  assert_equal a "helper";
-  let b = Helpers.str_drop_while pred "xhelper" in
-  assert_equal b "helper"
+  let a = Helpers.drop_while pred @@ Bytes.of_string "helper" in
+  assert_equal a @@ Bytes.of_string "helper";
+  let b = Helpers.drop_while pred @@ Bytes.of_string "xhelper" in
+  assert_equal b @@ Bytes.of_string "helper"
 
 let test_marshal_unmarshal_int () =
   let generator = QCheck.Gen.ui64 in
@@ -75,8 +76,8 @@ let test_marshal_unmarshal_int64 () =
   ) nums
 
 let test_unmask () =
-  let a = Helpers.unmask "01010101" "\x01\x01\x01\x01\x01\x01\x01\x01" in
-  assert_equal a "10101010"
+  let a = Helpers.unmask "01010101" @@ Bytes.of_string "\x01\x01\x01\x01\x01\x01\x01\x01" in
+  assert_equal a @@ Bytes.of_string "10101010"
 
 let test =
   "test_helpers" >:::

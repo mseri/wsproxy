@@ -18,7 +18,7 @@ module Wsprotocol :
     type 'a t = 'a Iteratees.Iteratee(IO).t
 
     (** Exposing the writer from the IO Iteratee *)
-    val writer : (string -> unit IO.t) -> string -> unit t
+    val writer : (bytes -> unit IO.t) -> bytes -> unit t
 
     (** enumeratee that base64 encodes individual chunks
         and passes them onto the sub-iteratee *)

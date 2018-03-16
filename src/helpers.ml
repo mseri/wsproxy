@@ -14,30 +14,30 @@
 
 (* Basic helper functions *)
 
-let split str n =
-  let l = String.length str in
+let split buf n =
+  let l = Bytes.length buf in
   if n>l
-  then (str,"")
-  else (String.sub str 0 n, String.sub str n (l-n))
+  then (buf, Bytes.of_string "")
+  else (Bytes.sub buf 0 n, Bytes.sub buf n (l-n))
 
-let break pred str =
-  let l = String.length str in
+let break pred buf =
+  let l = Bytes.length buf in
   let rec inner = function
-    | 0 -> (str,"")
+    | 0 -> None
     | n ->
-      if pred str.[l-n]
-      then split str (l-n)
+      if pred (Bytes.get buf (l-n))
+      then Some (split buf (l-n))
       else inner (n-1)
   in inner l
 
-let str_drop_while pred str =
-  let l = String.length str in
+let drop_while pred buf =
+  let l = Bytes.length buf in
   let rec inner = function
-    | 0 -> ""
+    | 0 -> Bytes.of_string ""
     | n ->
-      if pred str.[l-n]
+      if pred (Bytes.get buf (l-n))
       then inner (n-1)
-      else String.sub str (l-n) n
+      else Bytes.sub buf (l-n) n
   in inner l
 
 let marshal_int ?(bigendian=true) n x =
@@ -85,11 +85,10 @@ let unmarshal_int16 s = Int64.to_int (unmarshal_int 2 s)
 let unmarshal_int32 s = Int64.to_int32 (unmarshal_int 4 s)
 let unmarshal_int64 s = unmarshal_int 8 s
 
-let unmask mask str =
-  if String.length str = 0 then str
+let unmask mask buf =
+  if Bytes.length buf = 0 then buf
   else begin
-    let buf = Bytes.of_string str in
-    for i=0 to String.length str - 1 do
+    for i=0 to Bytes.length buf - 1 do
       let j = i mod 4 in
       let new_char =
         let buf_i = Bytes.get buf i |> int_of_char in
@@ -98,5 +97,5 @@ let unmask mask str =
       in
       Bytes.set buf i new_char
     done;
-    Bytes.unsafe_to_string buf
+    buf
   end

@@ -21,7 +21,7 @@
 type err = string
 
 (** The stream type is the stuff provided by enumerators to give to iteratees *)
-type stream = Eof of err option | Chunk of string
+type stream = Eof of err option | Chunk of bytes
 val string_of_stream : stream -> string
 
 
@@ -73,22 +73,22 @@ module Iteratee :
 
     (** writer - a generic writer iteratee. Takes an argument of type
         'string -> unit IO.t' *)
-    val writer : (string -> unit IO.t) -> string -> unit t
+    val writer : (bytes -> unit IO.t) -> bytes -> unit t
 
     (** break - iteratee that stops consuming input when the supplied predicate is met,
         then returns the string so far *)
-    val break : (char -> bool) -> string t
+    val break : (char -> bool) -> bytes t
 
     (** heads - iteratee that matches character for character the incoming stream and
         the string passed in, then returns the number of characters that
         matched *)
-    val heads : string -> int t
+    val heads : bytes -> int t
 
     (** drop - iteratee that consumes and ignores n characters of the stream *)
     val drop : int -> unit t
 
     (** readn - iteratee that reads exactly n characters from the stream *)
-    val readn : int -> string t
+    val readn : int -> bytes t
 
     (** read_int8 - reads an int8 from the stream *)
     val read_int8 : int t
@@ -104,10 +104,10 @@ module Iteratee :
     val drop_while : (char -> bool) -> unit t
 
     (** accumulate - Simply accumulate the stream until EOF *)
-    val accumulate : string t
+    val accumulate : bytes t
 
     (** apply - applies the chunks to the supplied function (for side effect) *)
-    val apply : (string -> unit) -> unit t
+    val apply : (bytes -> unit) -> unit t
 
     (** liftI - turn an iteratee hiding inside the monad into an iteratee *)
     val liftI : 'a t IO.t -> 'a t
@@ -121,11 +121,11 @@ module Iteratee :
     val enum_eof : 'a t -> 'a t IO.t
 
     (** enum_1chunk - Give the supplied string to the iteratee in one chunk *)
-    val enum_1chunk : string -> 'a t -> 'a t IO.t
+    val enum_1chunk : bytes -> 'a t -> 'a t IO.t
 
     (** enum_nchunk - Gives the supplied string to the iteratee in chunks of length n.
         Good for testing *)
-    val enum_nchunk : string -> int -> 'a t -> 'a t IO.t
+    val enum_nchunk : bytes -> int -> 'a t -> 'a t IO.t
 
     (** extract_result_from_iteratee - Given a 'done' iteratee, pull the result out *)
     val extract_result_from_iteratee : 'a t -> 'a
@@ -147,8 +147,8 @@ module Iteratee :
 
     (** modify - Modify the stream in some way before giving the result to the
         inner stream. For example, one could base64 encode things this way *)
-    val modify : (string -> string) -> 'a t -> 'a t t
+    val modify : (bytes -> bytes) -> 'a t -> 'a t t
 
     type 'a either = Left of 'a | Right of 'a
-    val read_lines : string list either t
+    val read_lines : bytes list either t
   end

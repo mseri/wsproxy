@@ -26,27 +26,27 @@ let get_data = function
 
 let test_heads () =
   let res str =
-    match get_data (Test.StringMonad.getdata (enum_1chunk "test" (heads str))) with
+    match get_data (Test.StringMonad.getdata (enum_1chunk (Bytes.of_string "test") (heads str))) with
     | Some x -> x
     | None -> 1234
   in
-  assert_equal (res "t") 1;
-  assert_equal (res "te") 2;
-  assert_equal (res "x") 0
+  assert_equal (res @@ Bytes.of_string "t") 1;
+  assert_equal (res @@ Bytes.of_string "te") 2;
+  assert_equal (res @@ Bytes.of_string "x") 0
 
 let test_drop () =
-  assert_equal (Test.StringMonad.getdata (enum_1chunk "test" (drop 1))) (IE_done ())
+  assert_equal (Test.StringMonad.getdata (enum_1chunk (Bytes.of_string "test") (drop 1))) (IE_done ())
 
 let test_readn () =
   let res i =
-    match get_data (Test.StringMonad.getdata (enum_1chunk "test" (readn i))) with
+    match get_data (Test.StringMonad.getdata (enum_1chunk (Bytes.of_string "test") (readn i))) with
     | Some x -> x
-    | None -> "xxxxx"
+    | None -> Bytes.of_string "xxxxx"
   in
-  assert_equal (res 0) "";
-  assert_equal (res 1) "t";
-  assert_equal (res 2) "te";
-  assert_equal (res 4) "test"
+  assert_equal (res 0) @@ Bytes.of_string "";
+  assert_equal (res 1) @@ Bytes.of_string "t";
+  assert_equal (res 2) @@ Bytes.of_string "te";
+  assert_equal (res 4) @@ Bytes.of_string "test"
 
 let test_read_int8 () =
   let res str =
@@ -54,9 +54,9 @@ let test_read_int8 () =
     | Some x -> x
     | None -> 0
   in
-  assert_equal 97 (res "a");
-  assert_equal 65 (res "A");
-  assert_equal 125 (res "}")
+  assert_equal 97 (res @@ Bytes.of_string "a");
+  assert_equal 65 (res @@ Bytes.of_string "A");
+  assert_equal 125 (res @@ Bytes.of_string "}")
 
 let test_peek () =
   let res str =
@@ -64,8 +64,8 @@ let test_peek () =
     | Some x -> begin match x with | Some c -> c | None -> 'g' end
     | None -> 'g'
   in
-  assert_equal 'a' (res "abc");
-  assert_equal 'x' (res "xyz")
+  assert_equal 'a' (res @@ Bytes.of_string "abc");
+  assert_equal 'x' (res @@ Bytes.of_string "xyz")
 
 let test_head () =
   let res str =
@@ -73,19 +73,19 @@ let test_head () =
     | Some x -> begin match x with | Some c -> c | None -> 'g' end
     | None -> 'g'
   in
-  assert_equal 'a' (res "abc");
-  assert_equal 'x' (res "xyz")
+  assert_equal 'a' (res @@ Bytes.of_string "abc");
+  assert_equal 'x' (res @@ Bytes.of_string "xyz")
 
 let test_break () =
   let alter = function | '\n' -> true | _ -> false in
   let res str =
     match get_data (Test.StringMonad.getdata (enum_1chunk str (break alter))) with
     | Some x -> x
-    | None -> "xxxxx"
+    | None -> Bytes.of_string "xxxxx"
   in
-  assert_equal "" (res "\ntest");
-  assert_equal "test" (res "test\nabc");
-  assert_equal "abcxyz" (res "abcxyz\n")
+  assert_equal (Bytes.of_string "") (res @@ Bytes.of_string "\ntest");
+  assert_equal (Bytes.of_string "test") (res @@ Bytes.of_string "test\nabc");
+  assert_equal (Bytes.of_string "abcxyz") (res @@ Bytes.of_string "abcxyz\n")
 
 let test =
   "test_iteratees" >:::

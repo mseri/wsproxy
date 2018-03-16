@@ -22,10 +22,10 @@ end
 
 module StringMonad :
 sig
-  type 'a t = { data : 'a; str : string; }
+  type 'a t = { data : 'a; str : bytes; }
   val return : 'a -> 'a t
   val bind : 'a t -> ('a -> 'b t) -> 'b t
-  val strwr : string -> unit t
-  val getstr : 'a t -> string
+  val strwr : bytes -> unit t
+  val getstr : 'a t -> bytes
   val getdata : 'a t -> 'a
 end

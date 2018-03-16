@@ -23,11 +23,11 @@ end
 module StringMonad = struct
   type 'a t =
     { data : 'a;
-      str : string }
-  let return a = { data=a; str=""; }
+      str : bytes }
+  let return a = { data=a; str=Bytes.empty; }
   let bind x f =
     let newstr = f x.data in
-    {newstr with str = x.str ^ newstr.str}
+    {newstr with str = Bytes.concat Bytes.empty [x.str; newstr.str]}
 
   let strwr x =
     { data=(); str=x }
